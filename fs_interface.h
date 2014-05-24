@@ -14,6 +14,7 @@ int closeFile(int oftIndex);
 
 int read(int oftIndex, char* buffer, int count); // return read bytes qty
 int write(int oftIndex, char* buffer, int count);
+int lseek(int oftIndex, int pos);
 
 void dump_disk();
 void dump_oft();

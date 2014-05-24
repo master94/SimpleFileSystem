@@ -27,8 +27,13 @@ int main() {
 
     opened = openFile("aaaaaaaaaaaa");
     printf("OPEN %d\n", opened);
-    printf("WRITE %d\n", write(opened, "123 123 123 123 1234", 20));
-    closeFile(opened);
+    printf("WRITE %d\n", write(opened, "qwertyuiopasdfghjklz", 20));
+    printf("SEEK %d\n", lseek(opened, 15));
+    printf("READ %d\n", read(opened, buffer, 4));
+    for (int i = 0; i < 4; ++i)
+        printf("%c", buffer[i]);
+    printf("\n");
+    //closeFile(opened);
 
     dump_oft();
 

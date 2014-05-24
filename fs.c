@@ -298,6 +298,36 @@ int write(int oftIndex, char* buffer, int count) {
     return written;
 }
 
+int lseek(int oftIndex, int pos) {
+    OFT* oftItem = &getFileTable()[oftIndex];
+    if (oftItem->fileDescriptor == -1)
+        return -1;
+
+    FD fd;
+    int status = readFileDescriptor(&fd, oftItem->fileDescriptor);
+    if (status < 0)
+        return status;
+
+    if (pos >= fd.length)
+        return -1;
+
+    if (oftItem->currPos / BLOCK_SIZE != pos / BLOCK_SIZE) {
+        int status = writeBufferToDisk(oftItem, &fd);
+        if (status < 0)
+            return status;
+
+        oftItem->currPos = pos;
+        status = readBufferFromDisk(oftItem, &fd);
+        if (status < 0)
+            return status;
+    }
+    else {
+        oftItem->currPos = pos;
+    }
+
+    return 0;
+}
+
 void dump_oft() {
     printf("========= OFT =========\n");
 

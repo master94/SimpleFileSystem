@@ -282,7 +282,7 @@ int writeBufferToDisk(OFT* oftItem, FD* fd) {
 }
 
 int readBufferFromDisk(OFT* oftItem, FD* fd) {
-    const int innerBlockIndex = (oftItem->currPos - 1) / BLOCK_SIZE;
+    const int innerBlockIndex = oftItem->currPos / BLOCK_SIZE;
     if (innerBlockIndex >= BLOCK_PER_FILE)
         return -1;
 
