@@ -1,7 +1,6 @@
 #ifndef FS_INTERFACE_H
 #define FS_INTERFACE_H
 
-
 struct FileEntry {
     const char* name;
     int length;
@@ -10,11 +9,13 @@ struct FileEntry {
 int init_fs();
 int create(char filename[]);
 int removeFile(char filename[]);
+int openFile(char filename[]);
+int closeFile(int oftIndex);
 
-void writeDataWithOffset(int address, const char* data, int size);
-int findFreeDirectoryEntryIndex();
+int read(int oftIndex, char* buffer, int count); // return read bytes qty
 
 void dump_disk();
+
 /*void destroy(const char* filename);
 void open(const char* filename);
 void close(int index);

@@ -6,11 +6,6 @@
 #include "fake_driver.h"
 #include "defines.h"
 
-
-int findFreeBlockIndex();
-int markBlockUsed(int index);
-int markBlockFree(int index);
-
 void bytesToInt(const char* bytes, int* value);
 void intToBytes(char* bytes, const int* value);
 
@@ -253,4 +248,30 @@ int findFreeDirectoryEntryIndex() {
     else {
         return getFreeDirectoryEntryIndex(&d);
     }
+}
+
+int writeBufferToDisk(OFT* oftItem, FD* fd) {
+    const int innerBlockIndex = (oftItem->currPos - 1) / BLOCK_SIZE;
+    if (innerBlockIndex >= BLOCK_PER_FILE)
+        return -1;
+
+    const int blockIndex = fd->blocks[innerBlockIndex];
+    int status = write_block(SERVICE_BLOCKS + blockIndex, oftItem->buffer);
+    if (status < 0)
+        return status;
+
+    return 0;
+}
+
+int readBufferFromDisk(OFT* oftItem, FD* fd) {
+    const int innerBlockIndex = (oftItem->currPos - 1) / BLOCK_SIZE;
+    if (innerBlockIndex >= BLOCK_PER_FILE)
+        return -1;
+
+    const int blockIndex = fd->blocks[innerBlockIndex];
+    int status = read_block(SERVICE_BLOCKS + blockIndex, oftItem->buffer);
+    if (status < 0)
+        return status;
+
+    return 0;
 }
