@@ -33,7 +33,18 @@ int main() {
     for (int i = 0; i < 4; ++i)
         printf("%c", buffer[i]);
     printf("\n");
-    //closeFile(opened);
+    closeFile(opened);
+
+    FileEntry* fileList = 0;
+    int files = list(&fileList);
+    printf("FILES %d\n", files);
+
+    for (int i = 0; i < files; ++i) {
+        printf("... FD  : %d\n", fileList[i].descriptor);
+        printf("... LEN : %d\n", fileList[i].length);
+        printf("... NAME: %s\n\n", fileList[i].name);
+    }
+
 
     dump_oft();
 

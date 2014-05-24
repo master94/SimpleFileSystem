@@ -328,6 +328,45 @@ int lseek(int oftIndex, int pos) {
     return 0;
 }
 
+int list(FileEntry** result) {
+    const int entries = dirEntryCount();
+
+    if (entries == 0)
+        return 0;
+
+    int found = 0;
+    *result = malloc(entries * sizeof(FileEntry));
+
+    DE de;
+    FD fd;
+
+    for (int i = 0; i < dirEntryCount(); ++i) {
+        int status = readDirectoryEntry(&de, i);
+        if (status < 0)
+            return status;
+
+        if (de.fileDescriptor != -1) {
+            status = readFileDescriptor(&fd, de.fileDescriptor);
+            if (status < 0)
+                return status;
+
+            (*result)[found].descriptor = de.fileDescriptor;
+            (*result)[found].length = fd.length;
+            (*result)[found].name = malloc(FILE_NAME_SIZE + 1);
+            memcpy((*result)[found].name, de.filename, FILE_NAME_SIZE);
+            (*result)[found].name[FILE_NAME_SIZE] = '\0';
+
+            ++found;
+        }
+    }
+
+    if (found != entries) {
+        *result = (FileEntry*)realloc(*result, found * sizeof(FileEntry));
+    }
+
+    return found;
+}
+
 void dump_oft() {
     printf("========= OFT =========\n");
 
