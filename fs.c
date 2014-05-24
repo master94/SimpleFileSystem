@@ -57,7 +57,7 @@ int init_fs() {
     for (int i = 0; i < BLOCK_PER_FILE; ++i)
         fd.blocks[i] = -1;
 
-    const int fileDescriptorsQty = fileDescrEndBlock - fileDescrStartBlock + 1;
+    const int fileDescriptorsQty = (fileDescrEndBlock - fileDescrStartBlock + 1) * BLOCK_SIZE / sizeof(FD);
 
     writeFileDescriptor(&fd, 0); // dir
     for (int i = 1; i < fileDescriptorsQty; ++i) {

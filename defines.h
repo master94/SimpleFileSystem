@@ -7,7 +7,7 @@
 #define CYLINDERS 1
 #define SURFACES 2
 #define SECTORS 78
-#define BLOCK_SIZE 16
+#define BLOCK_SIZE 31
 #define BLOCKS (CYLINDERS * SURFACES * SECTORS)
 
 #define DESC_SIZE (4 * sizeof(int))

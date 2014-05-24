@@ -2,6 +2,7 @@
 
 #include <math.h>
 #include <string.h>
+#include <stdlib.h>
 
 #include "fake_driver.h"
 #include "defines.h"
@@ -48,11 +49,13 @@ int findFreeFileDescriptorIndex() {
     const int offset = ceil((double)(BLOCKS - SERVICE_BLOCKS) / (BIT_PER_BYTE * BLOCK_SIZE)) * BLOCK_SIZE;
     int index = 0;
 
+    printf("OFFSET %d\n", offset);
+
     char buffer[sizeof(int)];
     int value = 0;
 
-    while (offset + index * BLOCK_SIZE < SERVICE_BLOCKS * BLOCK_SIZE) {
-        readDataWithOffset(offset + index * BLOCK_SIZE, buffer, sizeof(int));
+    while (offset + index * sizeof(FD) < SERVICE_BLOCKS * BLOCK_SIZE) {
+        readDataWithOffset(offset + index * sizeof(FD), buffer, sizeof(int));
         bytesToInt(buffer, &value);
         if (value == -1)
             return index;
@@ -100,14 +103,14 @@ void writeDataWithOffset(int address, const char* data, int size) {
 }
 
 int writeFileDescriptor(FD* pfd, int index) {
-    const int offset = fileDescrStartBlock * BLOCK_SIZE + index * DESC_SIZE;
+    const int offset = fileDescrStartBlock * BLOCK_SIZE + index * sizeof(FD);
     writeDataWithOffset(offset, (char*)pfd, sizeof(FD));
 
     return 0;
 }
 
 int readFileDescriptor(FD* pfd, int index) {
-    const int offset = fileDescrStartBlock * BLOCK_SIZE + index * DESC_SIZE;
+    const int offset = fileDescrStartBlock * BLOCK_SIZE + index * sizeof(FD);
     readDataWithOffset(offset, (char*)pfd, sizeof(FD));
 
     return 0;
@@ -172,13 +175,16 @@ int getFreeDirectoryEntryIndex(FD* fd) {
 
     while (1) {
         const int block = offset / BLOCK_SIZE;
+
+        printf("OFF %d BLOCK %d\n", offset, block);
+
         if (block >= BLOCK_PER_FILE || offset + sizeof(DE) > BLOCK_PER_FILE * BLOCK_SIZE)
             break;
 
         if (fd->blocks[block] == -1)
             offset = (block + 1) * BLOCK_SIZE;
 
-        const int address = (SERVICE_BLOCKS + fd->blocks[block]) * BLOCK_SIZE;
+        const int address = (SERVICE_BLOCKS + fd->blocks[block]) * BLOCK_SIZE + offset % BLOCK_SIZE;
 
         readDataWithOffset(address, (char*)&entry, sizeof(DE));
 
@@ -208,6 +214,8 @@ int readDirectoryEntry(DE* pde, int index) {
 }
 
 int writeDirectoryEntry(DE* pde, int index) {
+    printf("DIR ENTRY INDEX %d\n", index);
+
     if ((index + 1) * sizeof(DE) > BLOCK_PER_FILE * BLOCK_SIZE)
         return -1;
 
@@ -246,7 +254,9 @@ int findFreeDirectoryEntryIndex() {
         return 0;
     }
     else {
-        return getFreeDirectoryEntryIndex(&d);
+        int index = getFreeDirectoryEntryIndex(&d);
+        printf("DIR ENT: %d\n", index);
+        return index;
     }
 }
 
