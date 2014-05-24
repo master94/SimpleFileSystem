@@ -13,8 +13,10 @@ int openFile(char filename[]);
 int closeFile(int oftIndex);
 
 int read(int oftIndex, char* buffer, int count); // return read bytes qty
+int write(int oftIndex, char* buffer, int count);
 
 void dump_disk();
+void dump_oft();
 
 /*void destroy(const char* filename);
 void open(const char* filename);

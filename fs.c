@@ -189,9 +189,6 @@ int closeFile(int oftIndex) {
     if (status < 0)
         return status;
 
-    if (oftItem->currPos > fd.length)
-        fd.length = oftItem->currPos;
-
     status = writeBufferToDisk(oftItem, &fd);
     if (status < 0)
         return status;
@@ -201,7 +198,7 @@ int closeFile(int oftIndex) {
         return status;
 
     oftItem->fileDescriptor = -1;
-    oftItem->currPos = 0;
+    oftItem->currPos = -1;
 
     return 0;
 }
@@ -258,9 +255,6 @@ int write(int oftIndex, char* buffer, int count) {
     char* pos = buffer;
 
     while (count - written > 0) {
-        if (fd.length - oftItem->currPos == 0)
-            break;
-
         const int offset = oftItem->currPos % BLOCK_SIZE;
         const int qty = min(count - written, BLOCK_SIZE - offset);
         memcpy(oftItem->buffer + offset, pos, qty);
@@ -302,6 +296,19 @@ int write(int oftIndex, char* buffer, int count) {
         return status;
 
     return written;
+}
+
+void dump_oft() {
+    printf("========= OFT =========\n");
+
+    OFT* oft = getFileTable();
+    for (int i = 0; i < FILE_TABLE_SIZE; ++i) {
+        printf("... FD : %d\n", oft[i].fileDescriptor);
+        printf("... POS: %d\n", oft[i].currPos);
+        printf("\n");
+    }
+
+    printf("=======================\n");
 }
 
 /*

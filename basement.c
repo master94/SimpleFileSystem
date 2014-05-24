@@ -255,8 +255,26 @@ int writeBufferToDisk(OFT* oftItem, FD* fd) {
     if (innerBlockIndex >= BLOCK_PER_FILE)
         return -1;
 
-    const int blockIndex = fd->blocks[innerBlockIndex];
-    int status = write_block(SERVICE_BLOCKS + blockIndex, oftItem->buffer);
+    int status = 0;
+
+    int blockIndex = fd->blocks[innerBlockIndex];
+    if (blockIndex == -1) {
+        blockIndex = findFreeBlockIndex();
+        if (blockIndex < 0)
+            return blockIndex;
+
+        status = markBlockUsed(blockIndex);
+        if (status < 0)
+            return status;
+
+        fd->blocks[innerBlockIndex] = blockIndex;
+    }
+
+    status = write_block(SERVICE_BLOCKS + blockIndex, oftItem->buffer);
+    if (status < 0)
+        return status;
+
+    status = writeFileDescriptor(fd, oftItem->fileDescriptor);
     if (status < 0)
         return status;
 
