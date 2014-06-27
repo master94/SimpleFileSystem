@@ -18,13 +18,23 @@ On the current step of development there is test.c file for tests which are run 
 ================
 
 DriverStub      - driver sources
+
 FS-proj.pdf     - project description, FS structure, functions
+
 basement.h/c    - low-level functions to work with data blocks, utils, etc
+
 defines.h       - some predefined data, as disk size, block size, descriptors quantity, filename length and etc
+
 fs.c            - core functionality of file system
+
 fs_interface.h  - file system interface
+
 log_wrapper.h/c - wrappers to fs_interface functions for logging purposes
+
 main.c          - entry point, run tests
+
 statuses.h      - return statuses, errors
+
 structs.h       - data structures
+
 tests.h/c       - tests
