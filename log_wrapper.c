@@ -3,7 +3,7 @@
 #include <stdio.h>
 
 #include "fs_interface.h"
-#include "errors.h"
+#include "statuses.h"
 
 
 const char* getStatusText(int status) {

@@ -7,7 +7,7 @@
 #include <driver_stub.h>
 
 #include "defines.h"
-#include "errors.h"
+#include "statuses.h"
 
 
 void bytesToInt(const char* bytes, int* value);

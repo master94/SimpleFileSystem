@@ -7,10 +7,9 @@
 
 #include <driver_stub.h>
 
-#include "status.h"
 #include "defines.h"
 #include "basement.h"
-#include "errors.h"
+#include "statuses.h"
 #include "structs.h"
 
 

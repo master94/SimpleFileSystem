@@ -1,6 +1,7 @@
 #ifndef ERRORS_H
 #define ERRORS_H
 
+#define SUCCESS 0
 #define NO_FREE_BLOCK -2
 #define NO_FREE_FILE_DESCRIPTOR -3
 #define READ_BLOCK_ERROR -4
