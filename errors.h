@@ -6,6 +6,9 @@
 #define READ_BLOCK_ERROR -4
 #define WRITE_BLOCK_ERROR -5
 #define NO_FREE_DIR_ENTRY -6
-
+#define NO_DIR_ENTRY_FOUND -7
+#define NO_FREE_OFT_ITEM_FOUND -8
+#define FILE_NOT_OPENED -9
+#define BAD_OFT_INDEX -10
 
 #endif

@@ -3,21 +3,50 @@
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
+#include <stdio.h>
 
-#include "fake_driver.h"
+#include <driver_stub.h>
+
 #include "status.h"
 #include "defines.h"
 #include "basement.h"
+#include "errors.h"
+#include "structs.h"
 
 
-int findDirEntryByFileName(char name[FILE_NAME_SIZE]);
+int findDirEntryByFileName(char name[FILE_NAME_SIZE]) {
+    DirectoryEntry de;
+    for (int i = 0; i < dirEntryCount(); ++i) {
+        int status = readDirectoryEntry(&de, i);
+        if (status < 0)
+            return status;
 
-OFT* getFileTable() {
-    static OFT* table = 0;
+        if (de.fileDescriptor != -1) {
+            int equal = 1;
+
+            int pos = 0;
+            while (pos < FILE_NAME_SIZE && name[pos] != '\0') {
+                if (name[pos] != de.filename[pos]) {
+                    equal = 0;
+                    break;
+                }
+                ++pos;
+            }
+
+            if (equal)
+                return i;
+        }
+    }
+
+    return NO_DIR_ENTRY_FOUND;
+}
+
+OpenFileTable* getFileTable() {
+    static OpenFileTable* table = 0;
     static int initialized = 0;
 
     if (!initialized) {
-        table = malloc(FILE_TABLE_SIZE * sizeof(OFT));
+        table = malloc(FILE_TABLE_SIZE * sizeof(OpenFileTable));
 
         for (int i = 0; i < FILE_TABLE_SIZE; ++i) {
             table[i].fileDescriptor = -1;
@@ -32,37 +61,46 @@ OFT* getFileTable() {
 }
 
 int getFreeOftItemIndex() {
-    OFT* table = getFileTable();
+    OpenFileTable* table = getFileTable();
 
     for (int i = 0; i < FILE_TABLE_SIZE; ++i) {
         if (table[i].fileDescriptor == -1)
             return i;
     }
 
-    return -1;
+    return NO_FREE_OFT_ITEM_FOUND;
 }
 
 int init_fs() {
-    init(BLOCKS, BLOCK_SIZE); //FAKE
+    int status = init(CYLINDERS, SURFACES, SECTORS, BLOCK_SIZE);
+    if (status < 0)
+        return status;
 
     char block_stub[BLOCK_SIZE];
     memset(block_stub, 0, BLOCK_SIZE);
 
     for (int i = 0; i < BLOCKS; ++i) {
-        write_block(i, block_stub);
+        status = write_block(i, block_stub);
+        if (status < 0)
+            return status;
     }
 
-    FD fd;
+    FileDescriptor fd;
     fd.length = 0;
     for (int i = 0; i < BLOCK_PER_FILE; ++i)
         fd.blocks[i] = -1;
 
-    const int fileDescriptorsQty = (fileDescrEndBlock - fileDescrStartBlock + 1) * BLOCK_SIZE / sizeof(FD);
+    const int fileDescriptorsQty = (fileDescrEndBlock - fileDescrStartBlock + 1) * BLOCK_SIZE / sizeof(FileDescriptor);
 
-    writeFileDescriptor(&fd, 0); // dir
+    status = writeFileDescriptor(&fd, 0); // dir
+    if (status < 0)
+        return status;
+
     for (int i = 1; i < fileDescriptorsQty; ++i) {
         fd.length = -1;
-        writeFileDescriptor(&fd, i);
+        status = writeFileDescriptor(&fd, i);
+        if (status < 0)
+            return status;
     }
 
     return 0;
@@ -77,7 +115,7 @@ int create(char filename[FILE_NAME_SIZE]) {
     if (freeDirEntry < 0)
         return freeDirEntry;
 
-    DE de;
+    DirectoryEntry de;
     de.fileDescriptor = freeDescr;
     memcpy(de.filename, filename, FILE_NAME_SIZE);
 
@@ -85,7 +123,7 @@ int create(char filename[FILE_NAME_SIZE]) {
     if (status < 0)
         return status;
 
-    FD fd;
+    FileDescriptor fd;
     status = readFileDescriptor(&fd, freeDescr);
     if (status < 0)
         return status;
@@ -104,7 +142,7 @@ int removeFile(char filename[FILE_NAME_SIZE]) {
     if (dirEntry < 0)
         return dirEntry;
 
-    DE de;
+    DirectoryEntry de;
     int status = readDirectoryEntry(&de, dirEntry);
     if (status < 0)
         return status;
@@ -115,6 +153,8 @@ int removeFile(char filename[FILE_NAME_SIZE]) {
     memset(de.filename, 0, FILE_NAME_SIZE);
 
     status = writeDirectoryEntry(&de, dirEntry);
+    if (status < 0)
+        return status;
 
     status = removeFileDescriptor(descriptor);
     if (status < 0)
@@ -123,36 +163,12 @@ int removeFile(char filename[FILE_NAME_SIZE]) {
     return 0;
 }
 
-int findDirEntryByFileName(char name[FILE_NAME_SIZE]) {
-    DE de;
-    for (int i = 0; i < dirEntryCount(); ++i) {
-        readDirectoryEntry(&de, i);
-        if (de.fileDescriptor != -1) {
-            int equal = 1;
-
-            int pos = 0;
-            while (pos < FILE_NAME_SIZE && name[pos] != '\0') {
-                if (name[pos] != de.filename[pos]) {
-                    equal = 0;
-                    break;
-                }
-                ++pos;
-            }
-
-            if (equal)
-                return i;
-        }
-    }
-
-    return -1;
-}
-
 int openFile(char filename[FILE_NAME_SIZE]) {
     const int dirEntry = findDirEntryByFileName(filename);
     if (dirEntry < 0)
         return dirEntry;
 
-    DE de;
+    DirectoryEntry de;
     int status = readDirectoryEntry(&de, dirEntry);
     if (status < 0)
         return status;
@@ -161,11 +177,11 @@ int openFile(char filename[FILE_NAME_SIZE]) {
     if (freeOftItemIndex < 0)
         return freeOftItemIndex;
 
-    OFT* oftItem = &getFileTable()[freeOftItemIndex];
+    OpenFileTable* oftItem = &getFileTable()[freeOftItemIndex];
     oftItem->currPos = 0;
     oftItem->fileDescriptor = de.fileDescriptor;
 
-    FD fd;
+    FileDescriptor fd;
     status = readFileDescriptor(&fd, de.fileDescriptor);
     if (fd.length > 0) {
         const int blockIndex = fd.blocks[0];
@@ -180,11 +196,14 @@ int openFile(char filename[FILE_NAME_SIZE]) {
 }
 
 int closeFile(int oftIndex) {
-    OFT* oftItem = &getFileTable()[oftIndex];
+    if (oftIndex < 0)
+        return BAD_OFT_INDEX;
+
+    OpenFileTable* oftItem = &getFileTable()[oftIndex];
     if (oftItem->currPos < 0)
         return -1;
 
-    FD fd;
+    FileDescriptor fd;
     int status = readFileDescriptor(&fd, oftItem->fileDescriptor);
     if (status < 0)
         return status;
@@ -204,11 +223,14 @@ int closeFile(int oftIndex) {
 }
 
 int read(int oftIndex, char* buffer, int count) {
-    OFT* oftItem = &getFileTable()[oftIndex];
-    if (oftItem->fileDescriptor == -1)
-        return -1;
+    if (oftIndex < 0)
+        return BAD_OFT_INDEX;
 
-    FD fd;
+    OpenFileTable* oftItem = &getFileTable()[oftIndex];
+    if (oftItem->fileDescriptor == -1)
+        return FILE_NOT_OPENED;
+
+    FileDescriptor fd;
     int status = readFileDescriptor(&fd, oftItem->fileDescriptor);
     if (status < 0)
         return status;
@@ -242,11 +264,14 @@ int read(int oftIndex, char* buffer, int count) {
 }
 
 int write(int oftIndex, char* buffer, int count) {
-    OFT* oftItem = &getFileTable()[oftIndex];
-    if (oftItem->fileDescriptor == -1)
-        return -1;
+    if (oftIndex < 0)
+        return BAD_OFT_INDEX;
 
-    FD fd;
+    OpenFileTable* oftItem = &getFileTable()[oftIndex];
+    if (oftItem->fileDescriptor == -1)
+        return FILE_NOT_OPENED;
+
+    FileDescriptor fd;
     int status = readFileDescriptor(&fd, oftItem->fileDescriptor);
     if (status < 0)
         return status;
@@ -299,11 +324,14 @@ int write(int oftIndex, char* buffer, int count) {
 }
 
 int lseek(int oftIndex, int pos) {
-    OFT* oftItem = &getFileTable()[oftIndex];
-    if (oftItem->fileDescriptor == -1)
-        return -1;
+    if (oftIndex < 0)
+        return BAD_OFT_INDEX;
 
-    FD fd;
+    OpenFileTable* oftItem = &getFileTable()[oftIndex];
+    if (oftItem->fileDescriptor == -1)
+        return FILE_NOT_OPENED;
+
+    FileDescriptor fd;
     int status = readFileDescriptor(&fd, oftItem->fileDescriptor);
     if (status < 0)
         return status;
@@ -337,8 +365,8 @@ int list(FileEntry** result) {
     int found = 0;
     *result = malloc(entries * sizeof(FileEntry));
 
-    DE de;
-    FD fd;
+    DirectoryEntry de;
+    FileDescriptor fd;
 
     for (int i = 0; i < dirEntryCount(); ++i) {
         int status = readDirectoryEntry(&de, i);
@@ -365,19 +393,6 @@ int list(FileEntry** result) {
     }
 
     return found;
-}
-
-void dump_oft() {
-    printf("========= OFT =========\n");
-
-    OFT* oft = getFileTable();
-    for (int i = 0; i < FILE_TABLE_SIZE; ++i) {
-        printf("... FD : %d\n", oft[i].fileDescriptor);
-        printf("... POS: %d\n", oft[i].currPos);
-        printf("\n");
-    }
-
-    printf("=======================\n");
 }
 
 /*

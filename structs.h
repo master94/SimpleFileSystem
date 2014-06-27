@@ -3,21 +3,26 @@
 
 #include "defines.h"
 
-
 typedef struct FileDescriptor {
     int length;
     int blocks[BLOCK_PER_FILE];
-} FD;
+} FileDescriptor;
 
 typedef struct DirectoryEntry {
     int fileDescriptor;
     char filename[FILE_NAME_SIZE];
-} DE;
+} DirectoryEntry;
 
 typedef struct OpenFileTable {
     int fileDescriptor;
     int currPos;
     char buffer[BLOCK_SIZE];
-} OFT;
+} OpenFileTable;
+
+typedef struct FileEntry {
+    int descriptor;
+    int length;
+    char* name;
+} FileEntry;
 
 #endif

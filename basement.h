@@ -10,19 +10,19 @@ int markBlockFree(int index);
 
 // file descriptor magics
 int findFreeFileDescriptorIndex();
-int writeFileDescriptor(FD* pfd, int index);
-int readFileDescriptor(FD* pfd, int index);
+int writeFileDescriptor(FileDescriptor* pfd, int index);
+int readFileDescriptor(FileDescriptor* pfd, int index);
 int removeFileDescriptor(int index);
 
 // dir entries
 int dirEntryCount();
 int findFreeDirectoryEntryIndex();
-int getFreeDirectoryEntryIndex(FD* fd); // when read new entry it must be in block bounds
-int readDirectoryEntry(DE* pde, int index);
-int writeDirectoryEntry(DE* pde, int index);
+int getFreeDirectoryEntryIndex(FileDescriptor* fd); // when read new entry it must be in block bounds
+int readDirectoryEntry(DirectoryEntry* pde, int index);
+int writeDirectoryEntry(DirectoryEntry* pde, int index);
 
-// OFT buffer
-int writeBufferToDisk(OFT* oftItem, FD* fd);
-int readBufferFromDisk(OFT* oftItem, FD* fd);
+// OpenFileTable buffer
+int writeBufferToDisk(OpenFileTable* oftItem, FileDescriptor* fd);
+int readBufferFromDisk(OpenFileTable* oftItem, FileDescriptor* fd);
 
 #endif

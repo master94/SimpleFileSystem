@@ -4,9 +4,11 @@
 #include <string.h>
 #include <stdlib.h>
 
-#include "fake_driver.h"
+#include <driver_stub.h>
+
 #include "defines.h"
 #include "errors.h"
+
 
 void bytesToInt(const char* bytes, int* value);
 void intToBytes(char* bytes, const int* value);
@@ -16,11 +18,11 @@ int writeDataWithOffset(int address, const char* data, int size);
 
 
 int dirEntryCount() {
-    return BLOCK_PER_FILE * BLOCK_SIZE / sizeof(DE);
+    return BLOCK_PER_FILE * BLOCK_SIZE / sizeof(DirectoryEntry);
 }
 
 int removeFileDescriptor(int index) {
-    FD fd;
+    FileDescriptor fd;
     int status = readFileDescriptor(&fd, index);
     if (status < 0)
         return status;
@@ -53,8 +55,8 @@ int findFreeFileDescriptorIndex() {
     char buffer[sizeof(int)];
     int value = 0;
 
-    while (offset + index * sizeof(FD) < SERVICE_BLOCKS * BLOCK_SIZE) {
-        int status = readDataWithOffset(offset + index * sizeof(FD), buffer, sizeof(int));
+    while (offset + index * sizeof(FileDescriptor) < SERVICE_BLOCKS * BLOCK_SIZE) {
+        int status = readDataWithOffset(offset + index * sizeof(FileDescriptor), buffer, sizeof(int));
         if (status < 0)
             return status;
 
@@ -117,14 +119,14 @@ int writeDataWithOffset(int address, const char* data, int size) {
     return 0;
 }
 
-int writeFileDescriptor(FD* pfd, int index) {
-    const int offset = fileDescrStartBlock * BLOCK_SIZE + index * sizeof(FD);
-    return writeDataWithOffset(offset, (char*)pfd, sizeof(FD));
+int writeFileDescriptor(FileDescriptor* pfd, int index) {
+    const int offset = fileDescrStartBlock * BLOCK_SIZE + index * sizeof(FileDescriptor);
+    return writeDataWithOffset(offset, (char*)pfd, sizeof(FileDescriptor));
 }
 
-int readFileDescriptor(FD* pfd, int index) {
-    const int offset = fileDescrStartBlock * BLOCK_SIZE + index * sizeof(FD);
-    return readDataWithOffset(offset, (char*)pfd, sizeof(FD));
+int readFileDescriptor(FileDescriptor* pfd, int index) {
+    const int offset = fileDescrStartBlock * BLOCK_SIZE + index * sizeof(FileDescriptor);
+    return readDataWithOffset(offset, (char*)pfd, sizeof(FileDescriptor));
 }
 
 void bytesToInt(const char* bytes, int* value) {
@@ -195,14 +197,14 @@ int markBlockFree(int index) {
 }
 
 // when read new entry it must be in block bounds
-int getFreeDirectoryEntryIndex(FD* fd) {
-    DE entry;
+int getFreeDirectoryEntryIndex(FileDescriptor* fd) {
+    DirectoryEntry entry;
     int offset = 0;
 
     while (1) {
         const int block = offset / BLOCK_SIZE;
 
-        if (block >= BLOCK_PER_FILE || offset + sizeof(DE) > BLOCK_PER_FILE * BLOCK_SIZE)
+        if (block >= BLOCK_PER_FILE || offset + sizeof(DirectoryEntry) > BLOCK_PER_FILE * BLOCK_SIZE)
             break;
 
         if (fd->blocks[block] == -1)
@@ -210,53 +212,53 @@ int getFreeDirectoryEntryIndex(FD* fd) {
 
         const int address = (SERVICE_BLOCKS + fd->blocks[block]) * BLOCK_SIZE + offset % BLOCK_SIZE;
 
-        int status = readDataWithOffset(address, (char*)&entry, sizeof(DE));
+        int status = readDataWithOffset(address, (char*)&entry, sizeof(DirectoryEntry));
         if (status < 0)
             return status;
 
         if (entry.fileDescriptor == -1)
-            return offset / sizeof(DE);
+            return offset / sizeof(DirectoryEntry);
 
-        offset += sizeof(DE);
+        offset += sizeof(DirectoryEntry);
     }
 
     return NO_FREE_DIR_ENTRY;
 }
 
-int readDirectoryEntry(DE* pde, int index) {
-    if ((index + 1) * sizeof(DE) > BLOCK_PER_FILE * BLOCK_SIZE)
+int readDirectoryEntry(DirectoryEntry* pde, int index) {
+    if ((index + 1) * sizeof(DirectoryEntry) > BLOCK_PER_FILE * BLOCK_SIZE)
         return -1;
 
-    FD d;
+    FileDescriptor d;
     int status = readFileDescriptor(&d, 0); //get dir desr
     if (status < 0)
         return status;
 
-    const int innerBlockIndex = index * sizeof(DE) / BLOCK_SIZE;
+    const int innerBlockIndex = index * sizeof(DirectoryEntry) / BLOCK_SIZE;
     const int blockIndex = SERVICE_BLOCKS + d.blocks[innerBlockIndex];
-    const int offset = index * sizeof(DE) % BLOCK_SIZE;
+    const int offset = index * sizeof(DirectoryEntry) % BLOCK_SIZE;
 
-    status = readDataWithOffset(blockIndex * BLOCK_SIZE + offset, (char*)pde, sizeof(DE));
+    status = readDataWithOffset(blockIndex * BLOCK_SIZE + offset, (char*)pde, sizeof(DirectoryEntry));
     if (status < 0)
         return status;
 
     return 0;
 }
 
-int writeDirectoryEntry(DE* pde, int index) {
-    if ((index + 1) * sizeof(DE) > BLOCK_PER_FILE * BLOCK_SIZE)
+int writeDirectoryEntry(DirectoryEntry* pde, int index) {
+    if ((index + 1) * sizeof(DirectoryEntry) > BLOCK_PER_FILE * BLOCK_SIZE)
         return -1;
 
-    FD d;
+    FileDescriptor d;
     int status = readFileDescriptor(&d, 0); //get dir descr
     if (status < 0)
         return status;
 
-    const int innerBlockIndex = index * sizeof(DE) / BLOCK_SIZE;
+    const int innerBlockIndex = index * sizeof(DirectoryEntry) / BLOCK_SIZE;
     const int blockIndex = SERVICE_BLOCKS + d.blocks[innerBlockIndex];
-    const int offset = index * sizeof(DE) % BLOCK_SIZE;
+    const int offset = index * sizeof(DirectoryEntry) % BLOCK_SIZE;
 
-    status = writeDataWithOffset(blockIndex * BLOCK_SIZE + offset, (char*)pde, sizeof(DE));
+    status = writeDataWithOffset(blockIndex * BLOCK_SIZE + offset, (char*)pde, sizeof(DirectoryEntry));
     if (status < 0)
         return status;
 
@@ -264,7 +266,7 @@ int writeDirectoryEntry(DE* pde, int index) {
 }
 
 int findFreeDirectoryEntryIndex() {
-    FD d;
+    FileDescriptor d;
     int status = readFileDescriptor(&d, 0); //get dir desr
     if (status < 0)
         return status;
@@ -278,7 +280,7 @@ int findFreeDirectoryEntryIndex() {
             d.blocks[i] = freeBlockIndex;
         }
 
-        DE de;
+        DirectoryEntry de;
         de.fileDescriptor = -1;
         memset(de.filename, 0, FILE_NAME_SIZE);
 
@@ -299,7 +301,7 @@ int findFreeDirectoryEntryIndex() {
     }
 }
 
-int writeBufferToDisk(OFT* oftItem, FD* fd) {
+int writeBufferToDisk(OpenFileTable* oftItem, FileDescriptor* fd) {
     const int innerBlockIndex = (oftItem->currPos - 1) / BLOCK_SIZE;
     if (innerBlockIndex >= BLOCK_PER_FILE)
         return -1;
@@ -330,7 +332,7 @@ int writeBufferToDisk(OFT* oftItem, FD* fd) {
     return 0;
 }
 
-int readBufferFromDisk(OFT* oftItem, FD* fd) {
+int readBufferFromDisk(OpenFileTable* oftItem, FileDescriptor* fd) {
     const int innerBlockIndex = oftItem->currPos / BLOCK_SIZE;
     if (innerBlockIndex >= BLOCK_PER_FILE)
         return -1;
